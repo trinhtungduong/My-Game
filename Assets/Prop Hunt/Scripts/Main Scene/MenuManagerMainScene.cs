@@ -2,9 +2,9 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class MenuManager : MonoBehaviour
+public class MenuManagerMainScene : MonoBehaviour
 {
-    public static MenuManager Instance;
+    public static MenuManagerMainScene Instance;
     public Menu[] menus;
     private void Awake()
     {
@@ -12,16 +12,16 @@ public class MenuManager : MonoBehaviour
     }
     public void OpenMenu(string menuName)
     {
-        for(int i = 0; i < menus.Length; i++)
+        for (int i = 0; i < menus.Length; i++)
         {
-            if(menus[i].menuName == menuName)
+            if (menus[i].menuName == menuName)
             {
-                OpenMenu(menus[i]);
+                menus[i].OpenMenu();
             }
-            //else if (menus[i].isOpen)
-            //{
-            //    CloseMenu(menus[i]);
-            //}
+            else if (menus[i].isOpen)
+            {
+                CloseMenu(menus[i]);
+            }
         }
     }
     public void OpenMenu(Menu menu)

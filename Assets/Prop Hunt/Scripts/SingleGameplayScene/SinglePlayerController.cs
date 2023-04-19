@@ -36,7 +36,7 @@ public class SinglePlayerController : MonoBehaviour
     }
     private void Update()
     {
-        MoveCameraAround();
+        //MoveCameraAround();
         MoveCalculate();
         Fall();
     }
@@ -46,8 +46,8 @@ public class SinglePlayerController : MonoBehaviour
         float vertical = Input.GetAxisRaw("Vertical");
         float targetAngle = Mathf.Atan2(horizontal, vertical) * Mathf.Rad2Deg + mainCameraTransform.eulerAngles.y;
 
-        animator.SetFloat("InputX", Input.GetAxis("Horizontal"));
-        animator.SetFloat("InputY", Input.GetAxis("Vertical"));
+        //animator.SetFloat("InputX", Input.GetAxis("Horizontal"));
+        //animator.SetFloat("InputY", Input.GetAxis("Vertical"));
 
         Vector3 moveDir = Quaternion.Euler(0f, targetAngle, 0f) * Vector3.forward;
         if (horizontal == 0f && vertical == 0f)
@@ -71,7 +71,7 @@ public class SinglePlayerController : MonoBehaviour
             {
                 //rigidBody.AddForce(transform.up * jumpForce);
                 gravity.y += Mathf.Sqrt(jumpHeight * -2f * gValue);
-                animator.SetTrigger("Jump");
+                //animator.SetTrigger("Jump");
             }
         }
 

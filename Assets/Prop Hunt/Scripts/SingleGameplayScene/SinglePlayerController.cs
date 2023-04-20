@@ -2,6 +2,7 @@ using Cinemachine;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Animations.Rigging;
 
 public class SinglePlayerController : MonoBehaviour
 {
@@ -29,16 +30,32 @@ public class SinglePlayerController : MonoBehaviour
 
     [Header("Animator Setting")]
     public Animator animator;
+    public Rig rigLayer_WeaponAiming;
+    public float aimDuration;
+
+    [Header("Weapon")]
+    public Weapon weapon;
 
     private void Start()
     {
-
+        Cursor.visible = false;
+        Cursor.lockState = CursorLockMode.Locked;
+        weapon.SetupWeapon();
     }
     private void Update()
     {
         MoveCameraAround();
+        Aiming();
         MoveCalculate();
         Fall();
+    }
+    private void LateUpdate()
+    {
+        //MoveCameraAround();
+    }
+    private void FixedUpdate()
+    {
+        //MoveCameraAround();
     }
     public void MoveCalculate()
     {
@@ -81,6 +98,26 @@ public class SinglePlayerController : MonoBehaviour
     {
         var angleRouting = mainCameraTransform.rotation.eulerAngles.y;
         transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.Euler(0, angleRouting, 0), Time.deltaTime * 100f);
+    }
+    public void Aiming()
+    {
+        if (Input.GetMouseButton(0))
+        {
+            rigLayer_WeaponAiming.weight += Time.deltaTime / aimDuration;
+        }
+        else
+        {
+            rigLayer_WeaponAiming.weight -= Time.deltaTime / aimDuration;
+        }
+
+        if (Input.GetMouseButton(0) && rigLayer_WeaponAiming.weight == 1)
+        {
+            weapon.StartFire();
+        }
+        if(Input.GetMouseButtonUp(0))
+        {
+            weapon.StopFire();
+        }
     }
     public bool CheckOnGround()
     {

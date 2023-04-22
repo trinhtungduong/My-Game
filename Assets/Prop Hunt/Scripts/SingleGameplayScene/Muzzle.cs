@@ -8,6 +8,8 @@ public class Muzzle : MonoBehaviour
 
     public void StartFire()
     {
+        if (listMuzzles.Length == 0) return;
+
         foreach(var particle in listMuzzles)
         {
             particle.Emit(1);

@@ -10,15 +10,16 @@ public class SinglePlayerController : MonoBehaviour
     [SerializeField] float moveSpeed;
     [SerializeField] float jumpHeight;
     [SerializeField] float gValue;
-    [SerializeField] bool isOnGround;
-    [SerializeField] float rotationX;
-    [SerializeField] float rotationY;    
+    [SerializeField] bool isJumping;
+    [SerializeField] float stepDown;
+    //[SerializeField] float rotationX;
+    //[SerializeField] float rotationY;    
     [SerializeField] Transform groundDetect;
     Vector3 velocity;
     Vector3 gravity;
 
     [Header("Camera Setting")]
-    [SerializeField] CinemachineFreeLook thirdPersonCamera;
+    //[SerializeField] CinemachineFreeLook thirdPersonCamera;
     [SerializeField] Transform mainCameraTransform;
 
     [Header("Layer Setting")]
@@ -26,102 +27,89 @@ public class SinglePlayerController : MonoBehaviour
 
     [Header("Physics Setting")]
     //public Rigidbody rigidBody;
-    public CharacterController character;
+    public CharacterController characterController;
 
     [Header("Animator Setting")]
+    public bool animatorSetuped;
     public Animator animator;
-    public Rig rigLayer_WeaponAiming;
-    public float aimDuration;
-
-    [Header("Weapon")]
-    public Weapon weapon;
+    public Vector3 rootMotion;
 
     private void Start()
     {
         Cursor.visible = false;
-        Cursor.lockState = CursorLockMode.Locked;
-        weapon.SetupWeapon();
+        Cursor.lockState = CursorLockMode.Locked;        
     }
     private void Update()
     {
-        MoveCameraAround();
-        Aiming();
         MoveCalculate();
-        Fall();
-    }
-    private void LateUpdate()
-    {
-        //MoveCameraAround();
+        LocoMotion();
+        if (Input.GetKeyDown(KeyCode.Space))
+        {
+            Jump();
+        }
     }
     private void FixedUpdate()
     {
-        //MoveCameraAround();
+        Move();        
+        //Fall();
+    }
+    private void OnAnimatorMove()
+    {
+        rootMotion += animator.deltaPosition;
+    }
+    public void LocoMotion()
+    {
+        animator.SetFloat("InputX", Input.GetAxis("Horizontal"));
+        animator.SetFloat("InputY", Input.GetAxis("Vertical"));
     }
     public void MoveCalculate()
     {
         float horizontal = Input.GetAxisRaw("Horizontal");
         float vertical = Input.GetAxisRaw("Vertical");
-        float targetAngle = Mathf.Atan2(horizontal, vertical) * Mathf.Rad2Deg + mainCameraTransform.eulerAngles.y;
-
-        animator.SetFloat("InputX", Input.GetAxis("Horizontal"));
-        animator.SetFloat("InputY", Input.GetAxis("Vertical"));
+        float targetAngle = Mathf.Atan2(horizontal, vertical) * Mathf.Rad2Deg + mainCameraTransform.eulerAngles.y;        
 
         Vector3 moveDir = Quaternion.Euler(0f, targetAngle, 0f) * Vector3.forward;
         if (horizontal == 0f && vertical == 0f)
             moveDir = Vector3.zero;
 
         velocity = moveDir.normalized * moveSpeed;
-        character.Move(velocity * Time.deltaTime);
     }
-    public void Fall()
+    public void Move()
     {
-        if (!CheckOnGround())
+        characterController.Move(velocity * Time.fixedDeltaTime);
+        if (isJumping)
         {
-            //rigidBody.AddForce(-transform.up * fallForce);
-            gravity.y += gValue * Time.deltaTime;
+            gravity.y += gValue * Time.fixedDeltaTime;
+            characterController.Move(gravity * Time.fixedDeltaTime);
+            isJumping = !CheckOnGround();
+            rootMotion = Vector3.zero;
         }
         else
         {
-            gravity.y = 0f;
+            characterController.Move(rootMotion + Vector3.down * stepDown);
+            rootMotion = Vector3.zero;
 
-            if (Input.GetKeyDown(KeyCode.Space))
+            if (!CheckOnGround())
             {
-                //rigidBody.AddForce(transform.up * jumpForce);
-                gravity.y += Mathf.Sqrt(jumpHeight * -2f * gValue);
-                animator.SetTrigger("Jump");
+                isJumping = true;
+                gravity = animator.velocity;
+                gravity.y = 0f;
             }
         }
-
-        character.Move(gravity * Time.deltaTime);
     }
-    public void MoveCameraAround()
+    
+    public void Jump()
     {
-        var angleRouting = mainCameraTransform.rotation.eulerAngles.y;
-        transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.Euler(0, angleRouting, 0), Time.deltaTime * 100f);
-    }
-    public void Aiming()
-    {
-        if (Input.GetMouseButton(0))
+        if (!isJumping)
         {
-            rigLayer_WeaponAiming.weight += Time.deltaTime / aimDuration;
-        }
-        else
-        {
-            rigLayer_WeaponAiming.weight -= Time.deltaTime / aimDuration;
-        }
-
-        if (Input.GetMouseButton(0) && rigLayer_WeaponAiming.weight == 1)
-        {
-            weapon.StartFire();
-        }
-        if(Input.GetMouseButtonUp(0))
-        {
-            weapon.StopFire();
+            isJumping = true;
+            gravity = animator.velocity;
+            gravity.y = Mathf.Sqrt(jumpHeight * -2f * gValue);
         }
     }
+  
     public bool CheckOnGround()
-    {
-        isOnGround = Physics.CheckSphere(groundDetect.position, 0.5f, surface);
-        return isOnGround;
+    {        
+        return Physics.CheckSphere(groundDetect.position, 0.5f, surface);
     }
 }

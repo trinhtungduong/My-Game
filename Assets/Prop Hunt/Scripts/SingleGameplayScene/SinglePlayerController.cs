@@ -37,7 +37,8 @@ public class SinglePlayerController : MonoBehaviour
     private void Start()
     {
         Cursor.visible = false;
-        Cursor.lockState = CursorLockMode.Locked;        
+        Cursor.lockState = CursorLockMode.Locked;
+        Application.targetFrameRate = 60;
     }
     private void Update()
     {
@@ -53,10 +54,6 @@ public class SinglePlayerController : MonoBehaviour
         Move();        
         //Fall();
     }
-    private void OnAnimatorMove()
-    {
-        rootMotion += animator.deltaPosition;
-    }
     public void LocoMotion()
     {
         animator.SetFloat("InputX", Input.GetAxis("Horizontal"));
@@ -66,36 +63,12 @@ public class SinglePlayerController : MonoBehaviour
     {
         float horizontal = Input.GetAxisRaw("Horizontal");
         float vertical = Input.GetAxisRaw("Vertical");
-        float targetAngle = Mathf.Atan2(horizontal, vertical) * Mathf.Rad2Deg + mainCameraTransform.eulerAngles.y;        
-
-        Vector3 moveDir = Quaternion.Euler(0f, targetAngle, 0f) * Vector3.forward;
-        if (horizontal == 0f && vertical == 0f)
-            moveDir = Vector3.zero;
-
+        Vector3 moveDir = transform.right * horizontal + transform.forward * vertical;
         velocity = moveDir.normalized * moveSpeed;
     }
     public void Move()
     {
         characterController.Move(velocity * Time.fixedDeltaTime);
-        if (isJumping)
-        {
-            gravity.y += gValue * Time.fixedDeltaTime;
-            characterController.Move(gravity * Time.fixedDeltaTime);
-            isJumping = !CheckOnGround();
-            rootMotion = Vector3.zero;
-        }
-        else
-        {
-            characterController.Move(rootMotion + Vector3.down * stepDown);
-            rootMotion = Vector3.zero;
-
-            if (!CheckOnGround())
-            {
-                isJumping = true;
-                gravity = animator.velocity;
-                gravity.y = 0f;
-            }
-        }
     }
     
     public void Jump()

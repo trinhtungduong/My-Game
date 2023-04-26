@@ -5,67 +5,59 @@ using UnityEngine.Animations.Rigging;
 
 public class Weapon : MonoBehaviour
 {
-    public bool weaponSetuped;
+    [Header("Weapon Setting")]
+    public string weaponName;
     public bool isFiring;
     public Muzzle muzzle;
+    public ParticleSystem hitEffect;
     public float shotDuration;
-    public Rig rigLayer_WeaponAiming;
-    public float aimDuration;
+    bool bulletOut;
+
+    public Transform raycastOrigin;
+    [HideInInspector]
+    public Transform raycastDestination;
+    Ray ray;
+    RaycastHit hitInfo;
+
     private void Update()
     {
-        if (!weaponSetuped) return;
-
-        if(isFiring)
-        {
-            shotDuration -= Time.deltaTime;
-            if(shotDuration <= 0)
-            {
-                shotDuration = 0.2f;
-                muzzle.StartFire();
-            }
-        }
-
-        //Aiming();
+        
     }
     private void LateUpdate()
     {
-        if (!weaponSetuped) return;
+        
+    }
 
-        Aiming();
-    }
-    public void SetupWeapon(Rig layerAiming)
-    {
-        isFiring = false;
-        weaponSetuped= true;
-        rigLayer_WeaponAiming = layerAiming;
-    }
     public void StartFire()
     {
-        isFiring = true;        
+        isFiring = true;
+        ray.origin = raycastOrigin.position;
+        ray.direction = raycastDestination.position - raycastOrigin.position;
+        if(Physics.Raycast(ray, out hitInfo) && bulletOut)
+        {
+            hitEffect.transform.position = hitInfo.point;
+            hitEffect.transform.forward = hitInfo.normal;
+            hitEffect.Emit(1);
+        }
     }
-
     public void StopFire()
     {
         isFiring = false;
+        bulletOut = false;
+        shotDuration = 0f;
     }
-    public void Aiming()
+    public void UpdateFire()
     {
-        if (Input.GetMouseButton(0))
+        if (isFiring)
         {
-            rigLayer_WeaponAiming.weight += Time.deltaTime / aimDuration;
+            shotDuration -= Time.deltaTime;
+            bulletOut = false;
+            if (shotDuration <= 0)
+            {
+                shotDuration = 0.2f;
+                muzzle.StartFire();
+                bulletOut = true;
+            }
         }
-        else
-        {
-            rigLayer_WeaponAiming.weight -= Time.deltaTime / aimDuration;
-        }
-
-        if (Input.GetMouseButton(0) && rigLayer_WeaponAiming.weight == 1)
-        {
-            StartFire();
-        }
-        if (Input.GetMouseButtonUp(0))
-        {
-            StopFire();
-        }
-    }
+    }    
 }

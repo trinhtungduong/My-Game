@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class Muzzle : MonoBehaviour
 {
-    public ParticleSystem[] listMuzzles;
+    public ParticleSystem[] listMuzzles;    
 
     public void StartFire()
     {

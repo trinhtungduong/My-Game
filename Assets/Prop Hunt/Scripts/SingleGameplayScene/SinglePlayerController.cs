@@ -6,33 +6,25 @@ using UnityEngine.Animations.Rigging;
 
 public class SinglePlayerController : MonoBehaviour
 {
-    [Header("Movement Setting")]    
-    [SerializeField] float moveSpeed;
-    [SerializeField] float jumpHeight;
-    [SerializeField] float gValue;
-    [SerializeField] bool isJumping;
-    [SerializeField] float stepDown;
-    //[SerializeField] float rotationX;
-    //[SerializeField] float rotationY;    
-    [SerializeField] Transform groundDetect;
-    Vector3 velocity;
-    Vector3 gravity;
+    [Header("Movement Setting")]
+    public CharacterController characterController;    
+    public float moveSpeed = 3f;
+    [HideInInspector]
+    public Vector3 dir;
+    float horizontalInput;
+    float verticalInput;
 
-    [Header("Camera Setting")]
-    //[SerializeField] CinemachineFreeLook thirdPersonCamera;
-    [SerializeField] Transform mainCameraTransform;
-
-    [Header("Layer Setting")]
+    [Header("Gravity Setting")]
+    //[SerializeField] Transform groundDetect;
+    [SerializeField] float groundYOffset;
     [SerializeField] LayerMask surface;
+    Vector3 spherePos;
+    [SerializeField] float gravity = -9.81f;
+    [SerializeField] bool isGrounded;
+    Vector3 gravityVelocity;
 
-    [Header("Physics Setting")]
-    //public Rigidbody rigidBody;
-    public CharacterController characterController;
-
-    [Header("Animator Setting")]
-    public bool animatorSetuped;
-    public Animator animator;
-    public Vector3 rootMotion;
+    [Header("Animator")]
+    [SerializeField] Animator characterAnimator;
 
     private void Start()
     {
@@ -42,47 +34,59 @@ public class SinglePlayerController : MonoBehaviour
     }
     private void Update()
     {
-        MoveCalculate();
+        GetDirectionAndMove();
+        GravityApply();
         LocoMotion();
-        if (Input.GetKeyDown(KeyCode.Space))
-        {
-            Jump();
-        }
     }
     private void FixedUpdate()
     {
-        Move();        
-        //Fall();
+        //GetDirectionAndMove();
+        //GravityApply();
     }
     public void LocoMotion()
     {
-        animator.SetFloat("InputX", Input.GetAxis("Horizontal"));
-        animator.SetFloat("InputY", Input.GetAxis("Vertical"));
+        var inputX = Input.GetAxis("Horizontal");
+        var inputY = Input.GetAxis("Vertical");
+
+        characterAnimator.SetFloat("InputX", inputX);
+        characterAnimator.SetFloat("InputY", inputY);
     }
-    public void MoveCalculate()
+    public void GetDirectionAndMove()
     {
-        float horizontal = Input.GetAxisRaw("Horizontal");
-        float vertical = Input.GetAxisRaw("Vertical");
-        Vector3 moveDir = transform.right * horizontal + transform.forward * vertical;
-        velocity = moveDir.normalized * moveSpeed;
+        horizontalInput = Input.GetAxisRaw("Horizontal");
+        verticalInput = Input.GetAxisRaw("Vertical");
+
+        dir = transform.forward * verticalInput + transform.right * horizontalInput;
+        characterController.Move(dir * moveSpeed * Time.deltaTime);
     }
-    public void Move()
+
+    public bool IsGrounded()
     {
-        characterController.Move(velocity * Time.fixedDeltaTime);
+        spherePos = new Vector3(transform.position.x, transform.position.y - groundYOffset, transform.position.z);
+        if (Physics.CheckSphere(spherePos, characterController.radius - 0.05f, surface)) return true;
+        return false;
     }
-    
-    public void Jump()
+
+    public void GravityApply()
     {
-        if (!isJumping)
+        isGrounded = IsGrounded();
+        if (!isGrounded) gravityVelocity.y += gravity * Time.deltaTime;
+        else
         {
-            isJumping = true;
-            gravity = animator.velocity;
-            gravity.y = Mathf.Sqrt(jumpHeight * -2f * gValue);
+            gravityVelocity.y = 0f;
+
+            if (Input.GetKeyDown(KeyCode.Space))
+            {
+                gravityVelocity.y += 5f;
+            }
         }
+
+        characterController.Move(gravityVelocity * Time.deltaTime);
     }
-  
-    public bool CheckOnGround()
-    {        
-        return Physics.CheckSphere(groundDetect.position, 0.5f, surface);
+
+    private void OnDrawGizmos()
+    {
+        Gizmos.color = Color.red;
+        Gizmos.DrawWireSphere(spherePos, characterController.radius - 0.05f);
     }
 }

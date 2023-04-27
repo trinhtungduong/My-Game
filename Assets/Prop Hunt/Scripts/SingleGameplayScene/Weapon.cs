@@ -10,6 +10,7 @@ public class Weapon : MonoBehaviour
     public bool isFiring;
     public Muzzle muzzle;
     public ParticleSystem hitEffect;
+    public float baseShotDuration;
     public float shotDuration;
     bool bulletOut;
 
@@ -54,7 +55,7 @@ public class Weapon : MonoBehaviour
             bulletOut = false;
             if (shotDuration <= 0)
             {
-                shotDuration = 0.2f;
+                shotDuration = baseShotDuration;
                 muzzle.StartFire();
                 bulletOut = true;
             }

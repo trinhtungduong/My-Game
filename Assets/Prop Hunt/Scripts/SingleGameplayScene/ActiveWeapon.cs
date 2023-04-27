@@ -5,11 +5,16 @@ using UnityEngine;
 public class ActiveWeapon : MonoBehaviour
 {
     public Transform crossHairTarget;
+    [HideInInspector]
     public Weapon weapon;
-    public UnityEngine.Animations.Rigging.Rig handIK;
 
-    //public Animator rigController;
-    public Weapon weaponPrefab;
+    public RigAnimator rigController;
+    public int indexWeapon;
+    public List<Weapon> listWeapons;
+    [HideInInspector]
+    public bool isSwitching;
+    [HideInInspector]
+    public float timeSwitching;
     // Start is called before the first frame update
     void Start()
     {
@@ -19,15 +24,23 @@ public class ActiveWeapon : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        if (isSwitching)
+        {
+            timeSwitching -= Time.deltaTime;
+            if(timeSwitching <= 0f)
+            {
+                isSwitching = false;
+            }
+        }
         Aiming();
         if (Input.GetKeyDown(KeyCode.K))
         {
-            Equip(weaponPrefab);
+            ChangeGun();
         }
     }
     public void Aiming()
     {
-        if (weapon)
+        if (weapon && !isSwitching)
         {
             if (Input.GetMouseButton(0))
             {
@@ -42,15 +55,26 @@ public class ActiveWeapon : MonoBehaviour
     }
     public void Equip(Weapon newWeapon)
     {
-        //if (weapon == newWeapon) return;
+        if (weapon == newWeapon) return;
 
         if (weapon)
         {
             weapon.gameObject.SetActive(false);
         }
+        isSwitching = false;
         weapon = newWeapon;
         weapon.raycastDestination = crossHairTarget;
         weapon.gameObject.SetActive(true);
-        //rigController.Play("equip_" + weapon.weaponName);
+        rigController.InitRig(1f, 0f);
+        rigController.PlayAnimation("equip_" + weapon.weaponName);
+        timeSwitching = rigController.GetSwitchGunTime();
+        //timeSwitching = 0.5f;
+        isSwitching = true;
+    }
+
+    public void ChangeGun()
+    {       
+        Equip(listWeapons[indexWeapon]);
+        indexWeapon = (indexWeapon >= (listWeapons.Count - 1)) ? 0 : (indexWeapon + 1);
     }
 }

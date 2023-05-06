@@ -1,3 +1,4 @@
+using Photon.Pun;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -5,13 +6,20 @@ using UnityEngine.Animations.Rigging;
 
 public class RigAnimator : MonoBehaviour
 {
+    [Header("Rig Reference")]
     public Animator animator;
     public TwoBoneIKConstraint leftHandIK;
     public Rig rigHand;
+    public MultiPositionConstraint positionConstraint;
 
+    [Header("Rig Builder")]
+    public RigBuilder rigBuilder;
+
+    [Header("Variables")]
     private bool isLeftHand;
     private float timeLeft;
     private float timeBase;
+
     private void Update()
     {
         if (isLeftHand)
@@ -48,5 +56,10 @@ public class RigAnimator : MonoBehaviour
         timeLeft = time;
         timeBase = time;
         isLeftHand = true;
+    }
+    public void WeaponOffset(Vector3 offset)
+    {
+        positionConstraint.data.offset = offset;
+        rigBuilder.Build();
     }
 }

@@ -1,3 +1,4 @@
+using Photon.Pun;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -8,6 +9,7 @@ public class ActiveWeapon : MonoBehaviour
     [HideInInspector]
     public Weapon weapon;
 
+    [Header("Gun Setup")]
     public RigAnimator rigController;
     public int indexWeapon;
     public List<Weapon> listWeapons;
@@ -15,10 +17,12 @@ public class ActiveWeapon : MonoBehaviour
     public bool isSwitching;
     [HideInInspector]
     public float timeSwitching;
+
     // Start is called before the first frame update
     void Start()
     {
-        
+        indexWeapon = 0;
+        ChangeGun();
     }
 
     // Update is called once per frame

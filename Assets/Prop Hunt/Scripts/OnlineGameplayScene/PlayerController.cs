@@ -3,115 +3,259 @@ using System.Collections.Generic;
 using UnityEngine;
 using Cinemachine;
 using Photon.Pun;
+using UnityEngine.Animations.Rigging;
 
 public class PlayerController : MonoBehaviour
 {
-    [Header("Movement Setting")]
-    Vector3 velocity;
-    Vector3 gravity;
-    [SerializeField] float moveSpeed;
-    [SerializeField] float jumpHeight;
-    [SerializeField] float gValue;
-    [SerializeField] bool isOnGround;
-    float turnSmoothVelocity;
-    [SerializeField] float rotationX;
-    [SerializeField] float rotationY;
-    [SerializeField] CinemachineFreeLook thirdPersonCamera;
-    Transform mainCameraTransform;
-    [SerializeField] Transform groundDetect;
+    [Header("Movement Setup")]
+    public CharacterController characterController;
+    public float moveSpeed = 3f;
+    public float jumpHeight = 10f;
+    [HideInInspector]
+    public Vector3 dir;
+    float horizontalInput;
+    float verticalInput;
 
-    [Header("Layer Setting")]
+    [Header("Gravity Setup")]
+    //[SerializeField] Transform groundDetect;
+    [SerializeField] float groundYOffset;
     [SerializeField] LayerMask surface;
+    Vector3 spherePos;
+    [SerializeField] float gravity = -9.81f;
+    [SerializeField] bool isGrounded;
+    Vector3 gravityVelocity;
 
-    [Header("Joystick")]
-    FloatingJoystick moveJoystick;
-    FloatingJoystick cameraJoystick;
+    [Header("Animator")]
+    [SerializeField] Animator characterAnimator;
 
-    [Header("Physics Setting")]
-    //public Rigidbody rigidBody;
-    public CharacterController character;
+    [Header("Camera Setting")]
+    [SerializeField] GameObject thirdPersonCamera;
+    [SerializeField] Transform cameraLookAt;
+    [SerializeField] float turnSpeed;
+    [SerializeField] float sensitivity;
+    float xAxis;
+    float yAxis;    
 
-    [Header("Photon Setting")]
-    public PhotonView photonView;
+    [Header("Gun Setup")]
+    public Transform crossHairTarget;
+    [HideInInspector]
+    public Weapon weapon;    
+    public RigAnimator rigController;
+    public int indexWeapon;
+    public List<Weapon> listWeapons;
+    [HideInInspector]
+    public bool isSwitching;
+    [HideInInspector]
+    public float timeSwitching;
+
+    [Header("Rig Setup")]
+    public int iterations;
+    public float angleLimit = 90f;
+    public Transform aimTransform;
+    public Transform targetTransform;
+    public Transform headBone;
+    public Transform weaponHolder;
+
+    [Header("Photon Setup")]
+    [SerializeField] PhotonView PV;
 
     private void Start()
     {
-        moveJoystick = InputController.Instance.moveJoystick;
-        cameraJoystick = InputController.Instance.cameraJoystick;
-        mainCameraTransform = InputController.Instance.mainCameraTransform;
-        if (!photonView.IsMine)
+        if (PV.IsMine)
+        {
+            Cursor.visible = false;
+            Cursor.lockState = CursorLockMode.Locked;
+            Application.targetFrameRate = 60;
+
+            crossHairTarget = InputController.Instance.crosshairTarget;
+            indexWeapon = 0;
+            ChangeGun();
+
+            //RigAimSetup();
+        }
+        else
         {
             Destroy(thirdPersonCamera.gameObject);
         }
     }
     private void Update()
     {
-        if (!photonView.IsMine) return;
+        if (!PV.IsMine) return;
 
-        MoveCameraAround();
+        GetDirectionAndMove();
+        GravityApply();
+        LocoMotion();
 
-        float horizontal = moveJoystick.Horizontal;
-        float vertical = moveJoystick.Vertical;
-        float targetAngle = Mathf.Atan2(horizontal, vertical) * Mathf.Rad2Deg + mainCameraTransform.eulerAngles.y;
-            
-        Rotate(horizontal, vertical, targetAngle);
-        MoveCalculate(horizontal, vertical, targetAngle);
-        Fall();
+        UpdateInput();
+
+        if (isSwitching)
+        {
+            timeSwitching -= Time.deltaTime;
+            if (timeSwitching <= 0f)
+            {
+                isSwitching = false;
+            }
+        }
+        Aiming();
+        if (Input.GetKeyDown(KeyCode.K))
+        {
+            ChangeGun();
+        }
     }
     private void FixedUpdate()
     {
-        //if (!photonView.IsMine) return;
 
-        //Move();
-        //Fall();
+    }
+    private void LateUpdate()
+    {
+        AimBones();
+
+        if (!PV.IsMine) return;
+
+        MoveCameraAround();        
+    }
+    #region Player Controller
+    public void LocoMotion()
+    {
+        var inputX = Input.GetAxis("Horizontal");
+        var inputY = Input.GetAxis("Vertical");
+
+        characterAnimator.SetFloat("InputX", inputX);
+        characterAnimator.SetFloat("InputY", inputY);
+    }
+    public void GetDirectionAndMove()
+    {
+        horizontalInput = Input.GetAxisRaw("Horizontal");
+        verticalInput = Input.GetAxisRaw("Vertical");
+
+        dir = transform.forward * verticalInput + transform.right * horizontalInput;
+        characterController.Move(dir * moveSpeed * Time.deltaTime);
     }
 
-    public void Rotate(float horizontal, float vertical, float targetAngle)
+    public bool IsGrounded()
     {
-        if (horizontal == 0 && vertical == 0) return;
-        float angle = Mathf.SmoothDampAngle(transform.eulerAngles.y, targetAngle, ref turnSmoothVelocity, 0.1f);
-        transform.rotation = Quaternion.Euler(0f, angle, 0f);        
+        spherePos = new Vector3(transform.position.x, transform.position.y - groundYOffset, transform.position.z);
+        if (Physics.CheckSphere(spherePos, characterController.radius - 0.05f, surface)) return true;
+        return false;
     }
-    public void MoveCalculate(float horizontal, float vertical, float targetAngle)
-    {
-        Vector3 moveDir = Quaternion.Euler(0f, targetAngle, 0f) * Vector3.forward;
-        if (horizontal == 0f && vertical == 0f)
-            moveDir = Vector3.zero;
 
-        velocity = moveDir.normalized * moveSpeed;
-        character.Move(velocity * Time.deltaTime);                  
-    }
-    public void Fall()
+    public void GravityApply()
     {
-        if (!CheckOnGround())
-        {
-            //rigidBody.AddForce(-transform.up * fallForce);
-            gravity.y += gValue * Time.deltaTime;
-        }
+        isGrounded = IsGrounded();
+        if (!isGrounded) gravityVelocity.y += gravity * Time.deltaTime;
         else
         {
-            gravity.y = 0f;
+            gravityVelocity.y = 0f;
 
             if (Input.GetKeyDown(KeyCode.Space))
             {
-                //rigidBody.AddForce(transform.up * jumpForce);
-                gravity.y += Mathf.Sqrt(jumpHeight * -2f * gValue);                
+                gravityVelocity.y += Mathf.Sqrt(jumpHeight * -2f * gravity);
             }
         }
 
-        character.Move(gravity * Time.deltaTime);
+        characterController.Move(gravityVelocity * Time.deltaTime);
+    }
+    #endregion
+
+    #region Player Aiming
+    public void UpdateInput()
+    {
+        xAxis += Input.GetAxis("Mouse X") * Time.deltaTime * sensitivity;
+        yAxis -= Input.GetAxis("Mouse Y") * Time.deltaTime * sensitivity;
+        yAxis = Mathf.Clamp(yAxis, -45f, 45f);
     }
     public void MoveCameraAround()
     {
-        rotationY += cameraJoystick.Horizontal * 150f * Time.deltaTime;
-        rotationX += cameraJoystick.Vertical * (-1) * Time.deltaTime;
-        rotationX = Mathf.Clamp(rotationX, 0f, 1f);
-        thirdPersonCamera.m_XAxis.Value = rotationY;
-        thirdPersonCamera.m_YAxis.Value = rotationX;
+        cameraLookAt.localEulerAngles = new Vector3(yAxis, cameraLookAt.localEulerAngles.y, cameraLookAt.localEulerAngles.z);
+        transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.Euler(transform.rotation.x, xAxis, transform.rotation.z), turnSpeed * Time.deltaTime);       
     }
-    public bool CheckOnGround()
+    #endregion
+
+    #region Active Weapon
+    public void Aiming()
     {
-        isOnGround = Physics.CheckSphere(groundDetect.position, 0.5f, surface);
-        return isOnGround;
+        if (weapon && !isSwitching)
+        {
+            if (Input.GetMouseButton(0))
+            {
+                weapon.StartFire();
+            }
+            weapon.UpdateFire();
+            if (Input.GetMouseButtonUp(0))
+            {
+                weapon.StopFire();
+            }
+        }
     }
+    public void Equip(Weapon newWeapon)
+    {
+        if (weapon == newWeapon) return;
+
+        if (weapon)
+        {
+            weapon.gameObject.SetActive(false);
+        }
+        isSwitching = false;
+        weapon = newWeapon;
+        weapon.raycastDestination = crossHairTarget;
+        weapon.gameObject.SetActive(true);
+        rigController.InitRig(1f, 0f);
+        rigController.WeaponOffset(weapon.weaponOffset);
+        rigController.PlayAnimation("equip_" + weapon.weaponName);
+        timeSwitching = rigController.GetSwitchGunTime();
+        //timeSwitching = 0.5f;
+        isSwitching = true;
+    }
+
+    public void ChangeGun()
+    {
+        Equip(listWeapons[indexWeapon]);
+        indexWeapon = (indexWeapon >= (listWeapons.Count - 1)) ? 0 : (indexWeapon + 1);
+    }
+    #endregion
+
+    #region Rig Controller
+    //public void RigAimSetup()
+    //{
+    //    foreach (var component in listAims)
+    //    {
+    //        var data = component.data.sourceObjects;
+    //        data.SetTransform(0, InputController.Instance.aimLookAt);
+    //        component.data.sourceObjects = data;
+    //    }
+    //    rigBuilder.Build();
+    //}
+    public void AimBones()
+    {
+        for(int i = 0; i < iterations; i++)
+        {
+            AimAtTarget(headBone, GetTargetPosition());
+        }
+        weaponHolder.rotation = aimTransform.rotation;
+    }
+    Vector3 GetTargetPosition()
+    {
+        Vector3 targetDirection = targetTransform.position - aimTransform.position;
+        Vector3 aimDirection = aimTransform.forward;
+
+        float blendOut = 0.0f;
+
+        float targetAngle = Vector3.Angle(targetDirection, aimDirection);
+
+        if(targetAngle > angleLimit)
+        {
+            blendOut += (targetAngle - angleLimit) / 50.0f;
+        }
+
+        Vector3 direction = Vector3.Slerp(targetDirection, aimDirection, blendOut);
+        return aimTransform.position + direction;
+    }
+    public void AimAtTarget(Transform bone, Vector3 targetPosition)
+    {
+        Vector3 aimDirection = aimTransform.forward;
+        Vector3 targetDirection = targetPosition - aimTransform.position;
+        Quaternion aimToward = Quaternion.FromToRotation(aimDirection, targetDirection);
+        bone.rotation = aimToward * bone.rotation;
+    }
+    #endregion
 }

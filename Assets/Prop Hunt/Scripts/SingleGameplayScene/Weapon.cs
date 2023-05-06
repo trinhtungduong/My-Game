@@ -7,6 +7,7 @@ public class Weapon : MonoBehaviour
 {
     [Header("Weapon Setting")]
     public string weaponName;
+    public Vector3 weaponOffset;
     public bool isFiring;
     public Muzzle muzzle;
     public ParticleSystem hitEffect;

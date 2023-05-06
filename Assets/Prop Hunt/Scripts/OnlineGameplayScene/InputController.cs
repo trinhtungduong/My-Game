@@ -5,9 +5,8 @@ using UnityEngine;
 public class InputController : MonoBehaviour
 {
     public static InputController Instance;
-    public FloatingJoystick moveJoystick;
-    public FloatingJoystick cameraJoystick;
-    public Transform mainCameraTransform;
+    public Transform crosshairTarget;
+    public Transform aimLookAt;
 
     private void Awake()
     {

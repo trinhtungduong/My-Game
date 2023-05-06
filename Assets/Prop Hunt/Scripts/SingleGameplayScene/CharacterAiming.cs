@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using Cinemachine;
 using UnityEngine.Animations.Rigging;
+using Photon.Pun;
 
 public class CharacterAiming : MonoBehaviour
 {
@@ -24,9 +25,7 @@ public class CharacterAiming : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        xAxis += Input.GetAxis("Mouse X") * Time.deltaTime * sensitivity;
-        yAxis -= Input.GetAxis("Mouse Y") * Time.deltaTime * sensitivity;
-        yAxis = Mathf.Clamp(yAxis, -45f, 45f);
+        UpdateInput();
         //MoveCameraAround();
     }
     private void FixedUpdate()
@@ -37,7 +36,12 @@ public class CharacterAiming : MonoBehaviour
     {
         MoveCameraAround();
     }
-
+    public void UpdateInput()
+    {
+        xAxis += Input.GetAxis("Mouse X") * Time.deltaTime * sensitivity;
+        yAxis -= Input.GetAxis("Mouse Y") * Time.deltaTime * sensitivity;
+        yAxis = Mathf.Clamp(yAxis, -45f, 45f);
+    }
     public void MoveCameraAround()
     {
         cameraLookAt.localEulerAngles = new Vector3(yAxis, cameraLookAt.localEulerAngles.y, cameraLookAt.localEulerAngles.z);

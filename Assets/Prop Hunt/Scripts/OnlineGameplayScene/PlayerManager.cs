@@ -26,5 +26,6 @@ public class PlayerManager : MonoBehaviour
     {
         Debug.Log("Create Player Controller");
         PhotonNetwork.Instantiate(Path.Combine("PhotonPrefabs", "PlayerController"), Vector3.zero, Quaternion.identity);
+        PhotonNetwork.InstantiateRoomObject(Path.Combine("PhotonPrefabs", "Test"), Vector3.zero + Vector3.forward * 5f, Quaternion.identity);
     }
 }

@@ -9,12 +9,16 @@ public class Weapon : MonoBehaviour
     public string weaponName;
     public Vector3 weaponOffset;
     public bool isFiring;
-    public Muzzle muzzle;
-    public ParticleSystem hitEffect;
-    public float baseShotDuration;
-    public float shotDuration;
-    bool bulletOut;
 
+    [Header("Weapon Effect")]
+    [SerializeField] protected Muzzle muzzle;
+    [SerializeField] protected HitEffect hitEffect;
+
+    [Header("Weapon Properties")]
+    [SerializeField] protected float baseShotDuration;
+    [SerializeField] protected float shotDuration;    
+
+    [Header("Weapon Direction")]
     public Transform raycastOrigin;
     [HideInInspector]
     public Transform raycastDestination;
@@ -30,36 +34,23 @@ public class Weapon : MonoBehaviour
         
     }
 
-    public void StartFire()
+    public virtual void StartFire()
     {
         isFiring = true;
         ray.origin = raycastOrigin.position;
         ray.direction = raycastDestination.position - raycastOrigin.position;
-        if(Physics.Raycast(ray, out hitInfo) && bulletOut)
+        if(Physics.Raycast(ray, out hitInfo))
         {
-            hitEffect.transform.position = hitInfo.point;
-            hitEffect.transform.forward = hitInfo.normal;
-            hitEffect.Emit(1);
+            hitEffect.SetupHit(hitInfo.point, hitInfo.normal);
         }
     }
-    public void StopFire()
+    public virtual void StopFire()
     {
         isFiring = false;
-        bulletOut = false;
         shotDuration = 0f;
     }
-    public void UpdateFire()
+    public virtual void UpdateFire()
     {
-        if (isFiring)
-        {
-            shotDuration -= Time.deltaTime;
-            bulletOut = false;
-            if (shotDuration <= 0)
-            {
-                shotDuration = baseShotDuration;
-                muzzle.StartFire();
-                bulletOut = true;
-            }
-        }
+        
     }    
 }

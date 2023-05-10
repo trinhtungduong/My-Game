@@ -4,8 +4,10 @@ using UnityEngine;
 using Cinemachine;
 using Photon.Pun;
 using UnityEngine.Animations.Rigging;
+using Hashtable = ExitGames.Client.Photon.Hashtable;
+using Photon.Realtime;
 
-public class PlayerController : MonoBehaviour
+public class PlayerController : MonoBehaviourPunCallbacks
 {
     [Header("Movement Setup")]
     public CharacterController characterController;
@@ -43,10 +45,14 @@ public class PlayerController : MonoBehaviour
     public RigAnimator rigController;
     public int indexWeapon;
     public List<Weapon> listWeapons;
+    public WeaponEquipData weaponEquipData;
+    public Transform weaponPivot;
     [HideInInspector]
     public bool isSwitching;
     [HideInInspector]
     public float timeSwitching;
+    public bool isInitWeapon;
+    public bool isCheckingEquip;
 
     [Header("Rig Setup")]
     public int iterations;
@@ -54,6 +60,7 @@ public class PlayerController : MonoBehaviour
     public Transform aimTransform;
     public Transform targetTransform;
     public Transform headBone;
+    public Transform neckBone;
     public Transform weaponHolder;
 
     [Header("Photon Setup")]
@@ -61,17 +68,20 @@ public class PlayerController : MonoBehaviour
 
     private void Start()
     {
+        InitListWeapon();
+
         if (PV.IsMine)
         {
             Cursor.visible = false;
             Cursor.lockState = CursorLockMode.Locked;
             Application.targetFrameRate = 60;
 
+            neckBone.localScale = Vector3.zero;
+
             crossHairTarget = InputController.Instance.crosshairTarget;
+            
             indexWeapon = 0;
             ChangeGun();
-
-            //RigAimSetup();
         }
         else
         {
@@ -80,7 +90,18 @@ public class PlayerController : MonoBehaviour
     }
     private void Update()
     {
-        if (!PV.IsMine) return;
+        if (!PV.IsMine)
+        {
+            if (isCheckingEquip)
+            {
+                if (isInitWeapon)
+                {
+                    isCheckingEquip = false;
+                    ChangeGun();
+                }
+            }
+            return;
+        }
 
         GetDirectionAndMove();
         GravityApply();
@@ -108,11 +129,15 @@ public class PlayerController : MonoBehaviour
     }
     private void LateUpdate()
     {
-        AimBones();
-
-        if (!PV.IsMine) return;
-
-        MoveCameraAround();        
+        if (PV.IsMine)
+        {
+            weaponHolder.rotation = Quaternion.Slerp(weaponHolder.rotation, cameraLookAt.rotation, Time.deltaTime * turnSpeed);
+            MoveCameraAround();
+        }
+        else
+        {
+            AimBones();
+        }            
     }
     #region Player Controller
     public void LocoMotion()
@@ -176,7 +201,7 @@ public class PlayerController : MonoBehaviour
     {
         if (weapon && !isSwitching)
         {
-            if (Input.GetMouseButton(0))
+            if (Input.GetMouseButtonDown(0))
             {
                 weapon.StartFire();
             }
@@ -186,6 +211,16 @@ public class PlayerController : MonoBehaviour
                 weapon.StopFire();
             }
         }
+    }
+    public void InitListWeapon()
+    {
+        listWeapons.Clear();
+        for(int i = 0; i < weaponEquipData.listWeapons.Count; i++)
+        {
+            var newWeapon = Instantiate(weaponEquipData.listWeapons[i], weaponPivot);
+            listWeapons.Add(newWeapon);
+        }
+        isInitWeapon = true;
     }
     public void Equip(Weapon newWeapon)
     {
@@ -204,13 +239,35 @@ public class PlayerController : MonoBehaviour
         rigController.PlayAnimation("equip_" + weapon.weaponName);
         timeSwitching = rigController.GetSwitchGunTime();
         //timeSwitching = 0.5f;
-        isSwitching = true;
+        isSwitching = true;        
     }
-
     public void ChangeGun()
     {
         Equip(listWeapons[indexWeapon]);
-        indexWeapon = (indexWeapon >= (listWeapons.Count - 1)) ? 0 : (indexWeapon + 1);
+
+        if (PV.IsMine)
+        {
+            Hashtable hash = new Hashtable();
+            hash.Add("indexWeapon", indexWeapon);
+            PhotonNetwork.LocalPlayer.SetCustomProperties(hash);
+        }
+
+        indexWeapon = (indexWeapon >= (listWeapons.Count - 1)) ? 0 : (indexWeapon + 1);      
+    }
+
+    public override void OnPlayerPropertiesUpdate(Player targetPlayer, Hashtable changedProps)
+    {
+        if(!PV.IsMine && targetPlayer == PV.Owner)
+        {
+            if (isInitWeapon)
+            {
+                Equip(listWeapons[(int)changedProps["indexWeapon"]]);
+            }
+            else
+            {
+                isCheckingEquip = true;
+            }
+        }
     }
     #endregion
 

@@ -12,8 +12,10 @@ public class Launcher : MonoBehaviourPunCallbacks
     [Header("Room and Player Setting")]
     public TMP_InputField roomNameInputField;
     public TMP_Text roomNameText;
+    public TMP_Text roomErrorMessage;
     public Transform roomListContent;
     public RoomListItem roomListItemPrefab;
+    private Dictionary<RoomInfo, RoomListItem> cachedRoomList = new Dictionary<RoomInfo, RoomListItem>();
     public Transform playerListContent;
     public PlayerListItem playerListItemPrefab;
 
@@ -41,8 +43,12 @@ public class Launcher : MonoBehaviourPunCallbacks
     public void CreateRoom()
     {
         if (string.IsNullOrEmpty(roomNameInputField.text)) return;
-        RoomOptions roomOptions = new RoomOptions();
-        roomOptions.MaxPlayers = 10;
+        RoomOptions roomOptions = new RoomOptions()
+        {
+            IsVisible = true,
+            IsOpen = true,
+            MaxPlayers = 10
+        };
         PhotonNetwork.CreateRoom(roomNameInputField.text, roomOptions);
         MenuManagerOnlineScene.Instance.OpenMenu("loading");
     }
@@ -77,9 +83,11 @@ public class Launcher : MonoBehaviourPunCallbacks
     public override void OnCreateRoomFailed(short returnCode, string message)
     {
         MenuManagerOnlineScene.Instance.OpenMenu("error panel");
+        roomErrorMessage.text = "Create Room Failed\n" + message;
     }
     public void StartGame()
     {
+        PhotonNetwork.CurrentRoom.IsOpen = false;
         PhotonNetwork.LoadLevel(2);
     }
     public void LeaveRoom()
@@ -93,15 +101,27 @@ public class Launcher : MonoBehaviourPunCallbacks
     }
     public override void OnRoomListUpdate(List<RoomInfo> roomList)
     {
-        foreach(Transform trans in roomListContent)
-        {
-            Destroy(trans.gameObject);
-        }
+        Debug.Log("Update");
         for(int i = 0; i < roomList.Count; i++)
-        {
-            if (roomList[i].RemovedFromList)
-                continue;
-            Instantiate(roomListItemPrefab, roomListContent).Setup(roomList[i]);
+        {          
+            RoomInfo info = roomList[i];
+            if (info.RemovedFromList)
+            {
+                if (cachedRoomList.ContainsKey(info))
+                {
+                    Destroy(cachedRoomList[info].gameObject);
+                    cachedRoomList.Remove(info);
+                }
+            }
+            else
+            {
+                if (!cachedRoomList.ContainsKey(info))
+                {
+                    var newRoom = Instantiate(roomListItemPrefab, roomListContent);
+                    newRoom.Setup(roomList[i]);
+                    cachedRoomList[info] = newRoom;
+                }
+            }
         }
     }
     public override void OnPlayerEnteredRoom(Player newPlayer)

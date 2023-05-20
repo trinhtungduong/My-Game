@@ -33,7 +33,8 @@ public class RoomManager : MonoBehaviourPunCallbacks
     {
         if(scene.buildIndex == 2)
         {
-            PhotonNetwork.Instantiate(Path.Combine("PhotonPrefabs", "PlayerManager"), Vector3.zero, Quaternion.identity);
+            //PhotonNetwork.InstantiateRoomObject(Path.Combine("PhotonPrefabs", "Test"), Vector3.zero + Vector3.forward * 5f, Quaternion.identity);
+            PhotonNetwork.Instantiate(Path.Combine("PhotonPrefabs", "PlayerManager"), -Vector3.up * 0.5f, Quaternion.identity);            
         }
     }
     void Start()

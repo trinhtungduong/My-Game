@@ -5100,6 +5100,8 @@ MonoBehaviour:
   animator: {fileID: 209115302}
   leftHandIK: {fileID: 1110568521}
   rigHand: {fileID: 122549321}
+  positionConstraint: {fileID: 0}
+  rigBuilder: {fileID: 0}
 --- !u!1 &241840468
 GameObject:
   m_ObjectHideFlags: 0
@@ -5597,7 +5599,7 @@ Mesh:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: pb_Mesh26188
+  m_Name: pb_Mesh27102
   serializedVersion: 10
   m_SubMeshes:
   - serializedVersion: 2
@@ -24087,7 +24089,7 @@ Mesh:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: pb_Mesh26264
+  m_Name: pb_Mesh27178
   serializedVersion: 10
   m_SubMeshes:
   - serializedVersion: 2
@@ -45765,7 +45767,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   weaponName: lazergun
+  weaponOffset: {x: 0, y: 0, z: 0}
   isFiring: 0
+  isBulletOut: 0
   muzzle: {fileID: 1953127810}
   hitEffect: {fileID: 1720530543}
   baseShotDuration: 0.1
@@ -46268,7 +46272,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   weaponName: basegun
+  weaponOffset: {x: 0, y: 0, z: 0}
   isFiring: 0
+  isBulletOut: 0
   muzzle: {fileID: 858562945}
   hitEffect: {fileID: 2978349676021141372}
   baseShotDuration: 0.2

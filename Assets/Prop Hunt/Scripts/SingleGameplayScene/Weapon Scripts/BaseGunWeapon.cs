@@ -12,6 +12,7 @@ public class BaseGunWeapon : Weapon
             shotDuration -= Time.deltaTime;
             if (shotDuration <= 0)
             {
+                isBulletOut = true;
                 shotDuration = baseShotDuration;
                 muzzle.StartFire();
             }

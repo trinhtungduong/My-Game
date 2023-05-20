@@ -3,11 +3,14 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System.IO;
+using Photon.Realtime;
 
 public class PlayerManager : MonoBehaviour
 {
     [HideInInspector]
     public PhotonView photonView;
+
+    GameObject controller;
 
     private void Awake()
     {
@@ -25,7 +28,24 @@ public class PlayerManager : MonoBehaviour
     public void CreateController()
     {
         Debug.Log("Create Player Controller");
-        PhotonNetwork.Instantiate(Path.Combine("PhotonPrefabs", "PlayerController"), Vector3.zero, Quaternion.identity);
-        PhotonNetwork.InstantiateRoomObject(Path.Combine("PhotonPrefabs", "Test"), Vector3.zero + Vector3.forward * 5f, Quaternion.identity);
+        Player[] players = PhotonNetwork.PlayerList;
+        int indexSpawn = 0;
+        for(int i = 0; i < players.Length; i++)
+        {
+            if(players[i] == photonView.Owner)
+            {
+                indexSpawn = i;
+                break;
+            }
+
+        }
+        Transform spawnPoint = BossTest.instance.GetSpawnPoint(indexSpawn);
+        controller = PhotonNetwork.Instantiate(Path.Combine("PhotonPrefabs", "PlayerController"), spawnPoint.position, Quaternion.identity, 0, new object[] { photonView.ViewID });
+    }
+
+    public void RemovePlayer()
+    {
+        PhotonNetwork.Destroy(controller);
+        PhotonNetwork.Destroy(gameObject);
     }
 }

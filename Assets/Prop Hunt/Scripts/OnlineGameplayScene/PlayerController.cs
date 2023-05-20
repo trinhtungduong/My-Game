@@ -3,11 +3,10 @@ using System.Collections.Generic;
 using UnityEngine;
 using Cinemachine;
 using Photon.Pun;
-using UnityEngine.Animations.Rigging;
 using Hashtable = ExitGames.Client.Photon.Hashtable;
 using Photon.Realtime;
 
-public class PlayerController : MonoBehaviourPunCallbacks
+public class PlayerController : MonoBehaviourPunCallbacks, IPunInstantiateMagicCallback
 {
     [Header("Movement Setup")]
     public CharacterController characterController;
@@ -25,7 +24,9 @@ public class PlayerController : MonoBehaviourPunCallbacks
     Vector3 spherePos;
     [SerializeField] float gravity = -9.81f;
     [SerializeField] bool isGrounded;
+    bool prevOnGround;
     Vector3 gravityVelocity;
+    float velocityY;
 
     [Header("Animator")]
     [SerializeField] Animator characterAnimator;
@@ -35,14 +36,19 @@ public class PlayerController : MonoBehaviourPunCallbacks
     [SerializeField] Transform cameraLookAt;
     [SerializeField] float turnSpeed;
     [SerializeField] float sensitivity;
-    float xAxis;
-    float yAxis;    
 
-    [Header("Gun Setup")]
+    [Header("Crosshair Setup")]
     public Transform crossHairTarget;
-    [HideInInspector]
-    public Weapon weapon;    
+    Camera mainCamera;
+    Ray ray;
+    RaycastHit hitInfo;
+    float xAxis;
+    float yAxis;
+
+    [Header("Gun Setup")]   
     public RigAnimator rigController;
+    [HideInInspector]
+    public Weapon weapon;
     public int indexWeapon;
     public List<Weapon> listWeapons;
     public WeaponEquipData weaponEquipData;
@@ -60,12 +66,18 @@ public class PlayerController : MonoBehaviourPunCallbacks
     public Transform aimTransform;
     public Transform targetTransform;
     public Transform headBone;
-    public Transform neckBone;
     public Transform weaponHolder;
 
     [Header("Photon Setup")]
     [SerializeField] PhotonView PV;
+    PlayerManager playerManager;
 
+    [Header("Player Properties")]
+    public float health = 1000f;
+    private void Awake()
+    {
+        playerManager = PhotonView.Find((int)PV.InstantiationData[0]).GetComponent<PlayerManager>();
+    }
     private void Start()
     {
         InitListWeapon();
@@ -76,10 +88,7 @@ public class PlayerController : MonoBehaviourPunCallbacks
             Cursor.lockState = CursorLockMode.Locked;
             Application.targetFrameRate = 60;
 
-            neckBone.localScale = Vector3.zero;
-
-            crossHairTarget = InputController.Instance.crosshairTarget;
-            
+            mainCamera = Camera.main;
             indexWeapon = 0;
             ChangeGun();
         }
@@ -89,7 +98,7 @@ public class PlayerController : MonoBehaviourPunCallbacks
         }
     }
     private void Update()
-    {
+    {       
         if (!PV.IsMine)
         {
             if (isCheckingEquip)
@@ -102,11 +111,12 @@ public class PlayerController : MonoBehaviourPunCallbacks
             }
             return;
         }
-
+      
         GetDirectionAndMove();
         GravityApply();
         LocoMotion();
 
+        UpdateCrosshair();
         UpdateInput();
 
         if (isSwitching)
@@ -131,23 +141,15 @@ public class PlayerController : MonoBehaviourPunCallbacks
     {
         if (PV.IsMine)
         {
-            weaponHolder.rotation = Quaternion.Slerp(weaponHolder.rotation, cameraLookAt.rotation, Time.deltaTime * turnSpeed);
+            AimBones();
             MoveCameraAround();
         }
         else
         {
             AimBones();
-        }            
+        }
     }
     #region Player Controller
-    public void LocoMotion()
-    {
-        var inputX = Input.GetAxis("Horizontal");
-        var inputY = Input.GetAxis("Vertical");
-
-        characterAnimator.SetFloat("InputX", inputX);
-        characterAnimator.SetFloat("InputY", inputY);
-    }
     public void GetDirectionAndMove()
     {
         horizontalInput = Input.GetAxisRaw("Horizontal");
@@ -166,19 +168,56 @@ public class PlayerController : MonoBehaviourPunCallbacks
 
     public void GravityApply()
     {
+        prevOnGround = isGrounded;
         isGrounded = IsGrounded();
-        if (!isGrounded) gravityVelocity.y += gravity * Time.deltaTime;
+        if (!isGrounded)
+        {
+            gravityVelocity.y += gravity * Time.deltaTime;
+            velocityY = Mathf.Clamp(velocityY - Time.deltaTime * 5f, -1f, 1f);
+            characterAnimator.SetFloat("VelocityY", velocityY);
+        }
         else
         {
+            if (!prevOnGround)
+            {
+                PV.RPC(nameof(RPC_SetTrigger), RpcTarget.All, "OnGround");
+            }
+
             gravityVelocity.y = 0f;
 
             if (Input.GetKeyDown(KeyCode.Space))
             {
                 gravityVelocity.y += Mathf.Sqrt(jumpHeight * -2f * gravity);
+                PV.RPC(nameof(RPC_SetTrigger), RpcTarget.All, "Jump");
+                velocityY = 1f;
             }
         }
 
         characterController.Move(gravityVelocity * Time.deltaTime);
+    }
+    public void RemovePlayer()
+    {
+        playerManager.RemovePlayer();
+    }
+    #endregion
+
+    #region Player Animator
+    public void LocoMotion()
+    {
+        var inputX = Input.GetAxis("Horizontal");
+        var inputY = Input.GetAxis("Vertical");
+
+        characterAnimator.SetFloat("InputX", inputX);
+        characterAnimator.SetFloat("InputY", inputY);
+    }
+
+    public void ResetAllTriggers()
+    {
+        foreach(var param in characterAnimator.parameters)
+        {
+            if (param.type == AnimatorControllerParameterType.Trigger)
+                characterAnimator.ResetTrigger(param.name);
+        }
     }
     #endregion
 
@@ -193,6 +232,13 @@ public class PlayerController : MonoBehaviourPunCallbacks
     {
         cameraLookAt.localEulerAngles = new Vector3(yAxis, cameraLookAt.localEulerAngles.y, cameraLookAt.localEulerAngles.z);
         transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.Euler(transform.rotation.x, xAxis, transform.rotation.z), turnSpeed * Time.deltaTime);       
+    }
+    public void UpdateCrosshair()
+    {
+        ray.origin = mainCamera.transform.position;
+        ray.direction = mainCamera.transform.forward;
+        Physics.Raycast(ray, out hitInfo);
+        crossHairTarget.transform.position = hitInfo.point;
     }
     #endregion
 
@@ -254,21 +300,6 @@ public class PlayerController : MonoBehaviourPunCallbacks
 
         indexWeapon = (indexWeapon >= (listWeapons.Count - 1)) ? 0 : (indexWeapon + 1);      
     }
-
-    public override void OnPlayerPropertiesUpdate(Player targetPlayer, Hashtable changedProps)
-    {
-        if(!PV.IsMine && targetPlayer == PV.Owner)
-        {
-            if (isInitWeapon)
-            {
-                Equip(listWeapons[(int)changedProps["indexWeapon"]]);
-            }
-            else
-            {
-                isCheckingEquip = true;
-            }
-        }
-    }
     #endregion
 
     #region Rig Controller
@@ -288,7 +319,7 @@ public class PlayerController : MonoBehaviourPunCallbacks
         {
             AimAtTarget(headBone, GetTargetPosition());
         }
-        weaponHolder.rotation = aimTransform.rotation;
+        weaponHolder.rotation = Quaternion.Slerp(weaponHolder.rotation, cameraLookAt.rotation, Time.deltaTime * turnSpeed);
     }
     Vector3 GetTargetPosition()
     {
@@ -313,6 +344,41 @@ public class PlayerController : MonoBehaviourPunCallbacks
         Vector3 targetDirection = targetPosition - aimTransform.position;
         Quaternion aimToward = Quaternion.FromToRotation(aimDirection, targetDirection);
         bone.rotation = aimToward * bone.rotation;
+    }
+    #endregion
+
+    #region Photon Interface
+    public override void OnPlayerPropertiesUpdate(Player targetPlayer, Hashtable changedProps)
+    {
+        if (!PV.IsMine && targetPlayer == PV.Owner)
+        {
+            if (isInitWeapon)
+            {
+                Equip(listWeapons[(int)changedProps["indexWeapon"]]);
+            }
+            else
+            {
+                isCheckingEquip = true;
+            }
+        }
+    }
+    public void OnPhotonInstantiate(PhotonMessageInfo info)
+    {
+        BossTest.instance.AddNewPlayer(this);
+        info.Sender.TagObject = gameObject;
+    }
+    public override void OnPlayerLeftRoom(Player otherPlayer)
+    {
+        if(!PV.IsMine && PV.Owner == otherPlayer)
+        {
+            BossTest.instance.InActivePlayer(this);
+        }
+    }
+    [PunRPC]
+    void RPC_SetTrigger(string nameofTrigger)
+    {
+        ResetAllTriggers();
+        characterAnimator.SetTrigger(nameofTrigger);
     }
     #endregion
 }

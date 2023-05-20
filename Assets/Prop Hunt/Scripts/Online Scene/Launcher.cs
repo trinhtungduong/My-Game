@@ -27,12 +27,52 @@ public class Launcher : MonoBehaviourPunCallbacks
     }
     void Start()
     {
+        if (!PhotonNetwork.IsConnected)
+        {
+            MenuManagerOnlineScene.Instance.OpenMenu("loading");
+            PhotonNetwork.ConnectUsingSettings();
+        }
+        else
+        {
+            MenuManagerOnlineScene.Instance.OpenMenu("room");
+            PhotonNetwork.CurrentRoom.IsOpen = true;
+            PhotonNetwork.CurrentRoom.IsVisible = true;
+
+            roomNameText.text = PhotonNetwork.CurrentRoom.Name;
+
+            Player[] players = PhotonNetwork.PlayerList;
+
+            foreach (Transform trans in playerListContent)
+            {
+                Destroy(trans.gameObject);
+            }
+
+            for (int i = 0; i < players.Length; i++)
+            {
+                Instantiate(playerListItemPrefab, playerListContent).SetUp(players[i]);
+            }
+
+            startGameButton.SetActive(PhotonNetwork.IsMasterClient);
+        }
+    }
+    public void Disconnect()
+    {
         MenuManagerOnlineScene.Instance.OpenMenu("loading");
-        PhotonNetwork.ConnectUsingSettings();
+        PhotonNetwork.Disconnect();
+    }
+    public override void OnDisconnected(DisconnectCause cause)
+    {
+        base.OnDisconnected(cause);
+        Debug.Log("Disconnect from the server");
+        if (RoomManager.Instance != null)
+            Destroy(RoomManager.Instance.gameObject);
+        UnityEngine.SceneManagement.SceneManager.LoadScene(0);
     }
     public override void OnConnectedToMaster()
     {
         PhotonNetwork.JoinLobby();
+        PhotonNetwork.SendRate = 40;
+        PhotonNetwork.SerializationRate = 5;
         PhotonNetwork.AutomaticallySyncScene = true;
     }
     public override void OnJoinedLobby()
@@ -88,6 +128,7 @@ public class Launcher : MonoBehaviourPunCallbacks
     public void StartGame()
     {
         PhotonNetwork.CurrentRoom.IsOpen = false;
+        PhotonNetwork.CurrentRoom.IsVisible = false;
         PhotonNetwork.LoadLevel(2);
     }
     public void LeaveRoom()

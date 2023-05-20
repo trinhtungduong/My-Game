@@ -9,6 +9,7 @@ public class Weapon : MonoBehaviour
     public string weaponName;
     public Vector3 weaponOffset;
     public bool isFiring;
+    public bool isBulletOut;
 
     [Header("Weapon Effect")]
     [SerializeField] protected Muzzle muzzle;
@@ -38,19 +39,24 @@ public class Weapon : MonoBehaviour
     {
         isFiring = true;
         ray.origin = raycastOrigin.position;
-        ray.direction = raycastDestination.position - raycastOrigin.position;
-        if(Physics.Raycast(ray, out hitInfo))
-        {
-            hitEffect.SetupHit(hitInfo.point, hitInfo.normal);
-        }
+        ray.direction = raycastDestination.position - raycastOrigin.position;        
     }
     public virtual void StopFire()
     {
         isFiring = false;
+        isBulletOut = false;
         shotDuration = 0f;
     }
     public virtual void UpdateFire()
     {
-        
+        if (Physics.Raycast(ray, out hitInfo))
+        {
+            hitEffect.SetupHit(hitInfo.point, hitInfo.normal);
+            if (isBulletOut)
+            {
+                hitInfo.collider.GetComponentInParent<IDamageMonster>()?.TakeDamage();
+                isBulletOut = false;
+            }
+        }
     }    
 }

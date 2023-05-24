@@ -1,4 +1,5 @@
-public interface IDamageMonster
+
+public interface IDamagePlayer
 {
     public void TakeDamage();
 }

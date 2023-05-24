@@ -2460,7 +2460,7 @@ MonoBehaviour:
   gravity: -9.81
   isGrounded: 0
   characterAnimator: {fileID: 6328971972170145179}
-  thirdPersonCamera: {fileID: 6328971970614971051}
+  thirdPersonCamera: {fileID: 6328971970614971052}
   cameraLookAt: {fileID: 6328971970954892115}
   turnSpeed: 15
   sensitivity: 150
@@ -2483,6 +2483,7 @@ MonoBehaviour:
   weaponHolder: {fileID: 6328971972349890611}
   PV: {fileID: 6328971972170145190}
   health: 1000
+  isAlive: 0
 --- !u!1 &6328971972176478587
 GameObject:
   m_ObjectHideFlags: 0

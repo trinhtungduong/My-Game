@@ -6,7 +6,7 @@ using Photon.Pun;
 using Hashtable = ExitGames.Client.Photon.Hashtable;
 using Photon.Realtime;
 
-public class PlayerController : MonoBehaviourPunCallbacks, IPunInstantiateMagicCallback
+public class PlayerController : MonoBehaviourPunCallbacks, IPunInstantiateMagicCallback, IDamagePlayer
 {
     [Header("Movement Setup")]
     public CharacterController characterController;
@@ -32,7 +32,7 @@ public class PlayerController : MonoBehaviourPunCallbacks, IPunInstantiateMagicC
     [SerializeField] Animator characterAnimator;
 
     [Header("Camera Setting")]
-    [SerializeField] GameObject thirdPersonCamera;
+    [SerializeField] CinemachineVirtualCamera thirdPersonCamera;
     [SerializeField] Transform cameraLookAt;
     [SerializeField] float turnSpeed;
     [SerializeField] float sensitivity;
@@ -74,6 +74,8 @@ public class PlayerController : MonoBehaviourPunCallbacks, IPunInstantiateMagicC
 
     [Header("Player Properties")]
     public float health = 1000f;
+    public bool isAlive;
+    public bool damaging;
     private void Awake()
     {
         playerManager = PhotonView.Find((int)PV.InstantiationData[0]).GetComponent<PlayerManager>();
@@ -81,6 +83,8 @@ public class PlayerController : MonoBehaviourPunCallbacks, IPunInstantiateMagicC
     private void Start()
     {
         InitListWeapon();
+
+        isAlive = true;
 
         if (PV.IsMine)
         {
@@ -91,14 +95,17 @@ public class PlayerController : MonoBehaviourPunCallbacks, IPunInstantiateMagicC
             mainCamera = Camera.main;
             indexWeapon = 0;
             ChangeGun();
+
+            thirdPersonCamera.Priority = 10;          
         }
         else
         {
-            Destroy(thirdPersonCamera.gameObject);
+            thirdPersonCamera.Priority = 5;
+            Destroy(characterController);
         }
     }
     private void Update()
-    {       
+    {
         if (!PV.IsMine)
         {
             if (isCheckingEquip)
@@ -111,7 +118,9 @@ public class PlayerController : MonoBehaviourPunCallbacks, IPunInstantiateMagicC
             }
             return;
         }
-      
+
+        if (!isAlive) return;
+
         GetDirectionAndMove();
         GravityApply();
         LocoMotion();
@@ -364,14 +373,14 @@ public class PlayerController : MonoBehaviourPunCallbacks, IPunInstantiateMagicC
     }
     public void OnPhotonInstantiate(PhotonMessageInfo info)
     {
-        BossTest.instance.AddNewPlayer(this);
-        info.Sender.TagObject = gameObject;
+        MapManager.instance.AddNewPlayer(this);
+        //info.Sender.TagObject = gameObject;
     }
     public override void OnPlayerLeftRoom(Player otherPlayer)
     {
         if(!PV.IsMine && PV.Owner == otherPlayer)
         {
-            BossTest.instance.InActivePlayer(this);
+            MapManager.instance.InActivePlayer(this);
         }
     }
     [PunRPC]
@@ -379,6 +388,37 @@ public class PlayerController : MonoBehaviourPunCallbacks, IPunInstantiateMagicC
     {
         ResetAllTriggers();
         characterAnimator.SetTrigger(nameofTrigger);
+    }
+    [PunRPC]
+    void RPC_TakeDamage()
+    {
+        damaging = true;
+        Invoke(nameof(ResetDamaging), 3f);
+        health -= 400f;
+        if(PV.IsMine)
+            MapManager.instance.UpdatePlayerHealth(health, 1000f);
+
+        if (health <= 0f)
+        {
+            isAlive = false;
+            if (PV.IsMine)
+            {
+                thirdPersonCamera.Priority = 0;               
+            }
+            MapManager.instance.UpdateAlivePlayer();
+        }
+    }
+    #endregion
+
+    #region Interface
+    public void TakeDamage()
+    {
+        if(!damaging)
+            PV.RPC(nameof(RPC_TakeDamage), RpcTarget.All);
+    }
+    public void ResetDamaging()
+    {
+        damaging = false;
     }
     #endregion
 }

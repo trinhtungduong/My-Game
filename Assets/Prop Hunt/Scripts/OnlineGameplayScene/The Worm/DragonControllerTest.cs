@@ -22,6 +22,7 @@ public class DragonControllerTest : MonoBehaviourPunCallbacks, IDamageMonster, I
     public float headX;
     private float networkedHeadX;
     private Transform targetPlayer;
+    private PlayerController targetPlayerController;
     public float dirHead;
     public float headSpeed;
     public float limitHeadX;
@@ -33,7 +34,6 @@ public class DragonControllerTest : MonoBehaviourPunCallbacks, IDamageMonster, I
 
     [Header("UI")]
     public Image healthBar;
-    public TMP_Text resultText;
 
     public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)
     {
@@ -55,18 +55,21 @@ public class DragonControllerTest : MonoBehaviourPunCallbacks, IDamageMonster, I
 
     private void Start()
     {
-        listPlayers = BossTest.instance.listPlayerInRoom;
+        listPlayers = MapManager.instance.listPlayerInRoom;
     }
     private void Update()
     {
-        DampingHead();
-        LookAtTarget();
-
-        if (PV.IsMine && BossTest.instance.gameState == GameState.Playing)
+        if (monsLiveState == MonsterLiveState.Live)
         {
-            FindTarget();
-            CoolDownSkill();
-        }        
+            DampingHead();
+            LookAtTarget();
+
+            if (PV.IsMine && MapManager.instance.gameState == GameState.Playing)
+            {
+                FindTarget();
+                CoolDownSkill();
+            }
+        }
     }   
     public void CoolDownSkill()
     {
@@ -109,7 +112,7 @@ public class DragonControllerTest : MonoBehaviourPunCallbacks, IDamageMonster, I
     {
         if (monsBehaviorState != MonsterBehaviorState.Idle) return;
 
-        if(targetPlayer != null)
+        if(targetPlayer != null && targetPlayerController != null && targetPlayerController.isAlive)
         {
             return;
         }
@@ -119,7 +122,7 @@ public class DragonControllerTest : MonoBehaviourPunCallbacks, IDamageMonster, I
 
         for (int i = 0; i < listPlayers.Count; i++)
         {
-            if (listPlayers[i] != null)
+            if (listPlayers[i] != null && listPlayers[i].isAlive)
             {
                 if (indexPlayer < 0)
                     indexPlayer = i;
@@ -132,6 +135,7 @@ public class DragonControllerTest : MonoBehaviourPunCallbacks, IDamageMonster, I
             }
         }
 
+        targetPlayerController = listPlayers[indexPlayer];
         PV.RPC(nameof(RPC_SetTarget), RpcTarget.All, indexPlayer);
     }
     public void LookAtTarget()
@@ -160,20 +164,6 @@ public class DragonControllerTest : MonoBehaviourPunCallbacks, IDamageMonster, I
             PV.RPC(nameof(RPC_TakeDamage), RpcTarget.All);
     }
 
-    public void EndGame()
-    {
-        for (int i = 0; i < listPlayers.Count; i++)
-        {
-            if (listPlayers[i] != null)
-            {
-                listPlayers[i].RemovePlayer();
-            }
-        }
-        
-        if (PhotonNetwork.IsMasterClient)
-            PhotonNetwork.LoadLevel(1);
-    }
-
     [PunRPC]
     void RPC_TakeDamage()
     {
@@ -185,13 +175,7 @@ public class DragonControllerTest : MonoBehaviourPunCallbacks, IDamageMonster, I
         if(health == 0f)
         {
             monsLiveState = MonsterLiveState.Dead;
-            BossTest.instance.gameState = GameState.EndGame;
-            Destroy(RoomManager.Instance.gameObject);
-            Cursor.visible = true;
-            Cursor.lockState = CursorLockMode.None;
-            resultText.text = "WIN";
-            resultText.gameObject.SetActive(true);
-            Invoke(nameof(EndGame), 5f);
+            MapManager.instance.EndGameWin();
         }
     }
 
@@ -224,6 +208,7 @@ public enum MonsterBehaviorState
 
 public enum MonsterLiveState
 {
+    Sleep,
     Live,
     Dead
 }

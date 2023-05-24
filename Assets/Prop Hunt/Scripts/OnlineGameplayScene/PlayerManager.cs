@@ -39,7 +39,7 @@ public class PlayerManager : MonoBehaviour
             }
 
         }
-        Transform spawnPoint = BossTest.instance.GetSpawnPoint(indexSpawn);
+        Transform spawnPoint = MapManager.instance.GetSpawnPoint(indexSpawn);
         controller = PhotonNetwork.Instantiate(Path.Combine("PhotonPrefabs", "PlayerController"), spawnPoint.position, Quaternion.identity, 0, new object[] { photonView.ViewID });
     }
 

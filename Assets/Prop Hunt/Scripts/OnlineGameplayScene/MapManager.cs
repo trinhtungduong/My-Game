@@ -13,14 +13,34 @@ public class MapManager : MonoBehaviour
     public List<PlayerController> listPlayerInRoom;
     public List<Transform> listSpawns;
 
+    public bool gameStart;
+    public DragonControllerTest boss;
+
     public TMP_Text resultText;
+    public GameObject endGamePanel;
     public Image playerHealth;
 
     private void Awake()
     {
-        instance = this;
+        instance = this;      
     }
-
+    private void Update()
+    {
+        if(!gameStart && PhotonNetwork.IsMasterClient)
+        {
+            if(listPlayerInRoom.Count == PhotonNetwork.PlayerList.Length)
+            {
+                gameStart = true;
+                StartCoroutine(StartBoss());
+            }
+        }
+    }
+    IEnumerator StartBoss()
+    {
+        yield return new WaitForSeconds(3f);
+        gameState = GameState.Playing;
+        boss.StartBoss();
+    }
     public void AddNewPlayer(PlayerController newPlayer)
     {
         Player[] players = PhotonNetwork.PlayerList;
@@ -75,14 +95,26 @@ public class MapManager : MonoBehaviour
     {
         return listSpawns[index];
     }
+    public Transform GetRandomTarget()
+    {
+        int index = Random.Range(0, listPlayerInRoom.Count);
+        for(int i = 0; i < listPlayerInRoom.Count; i++)
+        {
+            if(listPlayerInRoom[index] != null && listPlayerInRoom[i].isAlive)
+            {
+                return listPlayerInRoom[index].transform;
+            }
+        }
+        return listPlayerInRoom[0].transform;
+    }
     public void EndGameWin()
     {
         gameState = GameState.EndGame;
         Destroy(RoomManager.Instance.gameObject);
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
-        resultText.text = "WIN";
-        resultText.gameObject.SetActive(true);
+        resultText.text = "You Win";
+        endGamePanel.SetActive(true);
         Invoke(nameof(EndGame), 5f);
     }
     public void EndGameLose()
@@ -91,8 +123,8 @@ public class MapManager : MonoBehaviour
         Destroy(RoomManager.Instance.gameObject);
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
-        resultText.text = "LOSE";
-        resultText.gameObject.SetActive(true);
+        resultText.text = "You Lose";
+        endGamePanel.SetActive(true);
         Invoke(nameof(EndGame), 5f);
     }
     public void EndGame()
@@ -106,11 +138,12 @@ public class MapManager : MonoBehaviour
         }
 
         if (PhotonNetwork.IsMasterClient)
-            PhotonNetwork.LoadLevel(1);
+            PhotonNetwork.LoadLevel(2);
     }
 }
 public enum GameState
 {
+    Waiting,
     Playing,
     EndGame
 }

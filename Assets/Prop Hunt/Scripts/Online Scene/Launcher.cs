@@ -4,6 +4,7 @@ using UnityEngine;
 using Photon.Pun;
 using TMPro;
 using Photon.Realtime;
+using Hashtable = ExitGames.Client.Photon.Hashtable;
 
 public class Launcher : MonoBehaviourPunCallbacks
 {
@@ -18,6 +19,11 @@ public class Launcher : MonoBehaviourPunCallbacks
     private Dictionary<RoomInfo, RoomListItem> cachedRoomList = new Dictionary<RoomInfo, RoomListItem>();
     public Transform playerListContent;
     public PlayerListItem playerListItemPrefab;
+
+    [HideInInspector]
+    public int indexMap;
+
+    public TMP_Text numberOfPlayerInRoom;
 
     [Header("Start Room Setting")]
     public GameObject startGameButton;
@@ -39,6 +45,10 @@ public class Launcher : MonoBehaviourPunCallbacks
             PhotonNetwork.CurrentRoom.IsVisible = true;
 
             roomNameText.text = PhotonNetwork.CurrentRoom.Name;
+
+            numberOfPlayerInRoom.text = "Players: " +
+                                         PhotonNetwork.CurrentRoom.PlayerCount.ToString() +
+                                         "/" + PhotonNetwork.CurrentRoom.MaxPlayers.ToString();
 
             Player[] players = PhotonNetwork.PlayerList;
 
@@ -87,8 +97,12 @@ public class Launcher : MonoBehaviourPunCallbacks
         {
             IsVisible = true,
             IsOpen = true,
-            MaxPlayers = 10
+            MaxPlayers = 2
         };
+        Hashtable RoomCustomProps = new Hashtable();
+        RoomCustomProps.Add("indexMap", indexMap);
+        roomOptions.CustomRoomProperties = RoomCustomProps;
+        roomOptions.CustomRoomPropertiesForLobby = new string[1] { "indexMap" };
         PhotonNetwork.CreateRoom(roomNameInputField.text, roomOptions);
         MenuManagerOnlineScene.Instance.OpenMenu("loading");
     }
@@ -101,6 +115,10 @@ public class Launcher : MonoBehaviourPunCallbacks
     {
         MenuManagerOnlineScene.Instance.OpenMenu("room");
         roomNameText.text = PhotonNetwork.CurrentRoom.Name;
+
+        numberOfPlayerInRoom.text = "Players: " +
+                                     PhotonNetwork.CurrentRoom.PlayerCount.ToString() +
+                                     "/" + PhotonNetwork.CurrentRoom.MaxPlayers.ToString();
 
         Player[] players = PhotonNetwork.PlayerList;
 
@@ -121,15 +139,14 @@ public class Launcher : MonoBehaviourPunCallbacks
         startGameButton.SetActive(PhotonNetwork.IsMasterClient);
     }
     public override void OnCreateRoomFailed(short returnCode, string message)
-    {
-        MenuManagerOnlineScene.Instance.OpenMenu("error panel");
-        roomErrorMessage.text = "Create Room Failed\n" + message;
+    {      
+        roomErrorMessage.text = "Error: " + message;
     }
     public void StartGame()
     {
         PhotonNetwork.CurrentRoom.IsOpen = false;
         PhotonNetwork.CurrentRoom.IsVisible = false;
-        PhotonNetwork.LoadLevel(2);
+        PhotonNetwork.LoadLevel(3);
     }
     public void LeaveRoom()
     {
@@ -150,6 +167,8 @@ public class Launcher : MonoBehaviourPunCallbacks
             {
                 if (cachedRoomList.ContainsKey(info))
                 {
+                    if (MenuManagerOnlineScene.Instance.roomChoosed == cachedRoomList[info])
+                        MenuManagerOnlineScene.Instance.ResetFindRoomPanel();
                     Destroy(cachedRoomList[info].gameObject);
                     cachedRoomList.Remove(info);
                 }
@@ -162,11 +181,22 @@ public class Launcher : MonoBehaviourPunCallbacks
                     newRoom.Setup(roomList[i]);
                     cachedRoomList[info] = newRoom;
                 }
+                else
+                {
+                    cachedRoomList[info].Setup(roomList[i]);
+                }
             }
         }
     }
     public override void OnPlayerEnteredRoom(Player newPlayer)
     {
         Instantiate(playerListItemPrefab, playerListContent).SetUp(newPlayer);
+        numberOfPlayerInRoom.text = "Players: " +
+                                     PhotonNetwork.CurrentRoom.PlayerCount.ToString() +
+                                     "/" + PhotonNetwork.CurrentRoom.MaxPlayers.ToString();
+    }
+    public void SetRoomMessage(string content)
+    {
+        roomErrorMessage.text = content;
     }
 }

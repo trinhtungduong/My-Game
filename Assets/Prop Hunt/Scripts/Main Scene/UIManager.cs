@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using Photon.Pun;
 
 public class UIManager : MonoBehaviour
 {
@@ -17,6 +18,13 @@ public class UIManager : MonoBehaviour
     public void OpenOnlineMode()
     {
         MenuManagerMainScene.Instance.OpenMenu("loading");
-        var operation = SceneManager.LoadSceneAsync(1);
+        PhotonNetwork.OfflineMode = false;
+        SceneManager.LoadSceneAsync(2);
+    }
+    public void OpenOfflineMode()
+    {
+        MenuManagerMainScene.Instance.OpenMenu("loading");
+        PhotonNetwork.OfflineMode = true;
+        SceneManager.LoadSceneAsync(1);
     }
 }

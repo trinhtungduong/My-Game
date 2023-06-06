@@ -186,7 +186,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 4645519518574967326}
-  - component: {fileID: 4645519518574967325}
+  - component: {fileID: 4969963487630732850}
   m_Layer: 0
   m_Name: Sci-Fi_Gun_sketchfab
   m_TagString: Untagged
@@ -219,7 +219,7 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 90, z: 0}
---- !u!114 &4645519518574967325
+--- !u!114 &4969963487630732850
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -228,15 +228,16 @@ MonoBehaviour:
   m_GameObject: {fileID: 4645519518574967324}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3edcf61a28a8f7b4697e9e3c994aa94d, type: 3}
+  m_Script: {fileID: 11500000, guid: 0b787117f3c7c884f9f70ecc4f14bc0c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   weaponName: lazergun
-  weaponOffset: {x: 0.05, y: 0.15, z: 0}
+  weaponOffset: {x: 0, y: 0, z: 0}
   isFiring: 0
+  isBulletOut: 0
   muzzle: {fileID: 4645519519959759675}
-  hitEffect: {fileID: 4645519519970085709}
-  baseShotDuration: 0.1
+  hitEffect: {fileID: 6474035064671515041}
+  baseShotDuration: 0.2
   shotDuration: 0
   raycastOrigin: {fileID: 4645519519959759674}
   raycastDestination: {fileID: 0}

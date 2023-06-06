@@ -4,7 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
-using TMPro;
+using UnityEngine.Animations.Rigging;
 
 public class DragonControllerTest : MonoBehaviourPunCallbacks, IDamageMonster, IPunObservable
 {
@@ -17,8 +17,10 @@ public class DragonControllerTest : MonoBehaviourPunCallbacks, IDamageMonster, I
     [Header("Worm Properties")]
     public MonsterLiveState monsLiveState;
     public MonsterBehaviorState monsBehaviorState;
+    public Form monsForm;
     public float health = 10000f;
-    public List<Transform> listBodyParts;
+    public List<WormBody> listBodyParts;
+    public Transform bossHead;
     public float headX;
     private float networkedHeadX;
     private Transform targetPlayer;
@@ -27,6 +29,7 @@ public class DragonControllerTest : MonoBehaviourPunCallbacks, IDamageMonster, I
     public float headSpeed;
     public float limitHeadX;
     private float timeSkill;
+    private Quaternion lookRotation;
 
     [Header("Skill")]
     public GameObject fireBall;
@@ -34,6 +37,13 @@ public class DragonControllerTest : MonoBehaviourPunCallbacks, IDamageMonster, I
 
     [Header("UI")]
     public Image healthBar;
+
+    [Header("Rigging")]
+    public Rig form1;
+    public Rig form2;
+
+    [Header("Particles")]
+    public List<ParticleSystem> explores;
 
     public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)
     {
@@ -52,7 +62,6 @@ public class DragonControllerTest : MonoBehaviourPunCallbacks, IDamageMonster, I
             }
         }
     }
-
     private void Start()
     {
         listPlayers = MapManager.instance.listPlayerInRoom;
@@ -61,16 +70,37 @@ public class DragonControllerTest : MonoBehaviourPunCallbacks, IDamageMonster, I
     {
         if (monsLiveState == MonsterLiveState.Live)
         {
-            DampingHead();
-            LookAtTarget();
-
-            if (PV.IsMine && MapManager.instance.gameState == GameState.Playing)
+            if (monsForm == Form.First)
             {
-                FindTarget();
-                CoolDownSkill();
+                DampingHead();
+                LookAtTarget();
+
+                if (PV.IsMine && MapManager.instance.gameState == GameState.Playing)
+                {
+                    FindTarget();
+                    CoolDownSkill();
+                }
+            }
+            else if(monsForm == Form.Second)
+            {
+                LookAtTarget();
+                if (PV.IsMine && MapManager.instance.gameState == GameState.Playing)
+                {
+                    FindTarget();
+                    CoolDownSkill();
+                }
             }
         }
     }   
+    public void StartBoss()
+    {
+        PV.RPC(nameof(RPC_StartBoss), RpcTarget.All);
+    }
+    [PunRPC]
+    public void RPC_StartBoss()
+    {
+        monsLiveState = MonsterLiveState.Live;
+    }
     public void CoolDownSkill()
     {
         if(monsBehaviorState == MonsterBehaviorState.Idle)
@@ -95,7 +125,7 @@ public class DragonControllerTest : MonoBehaviourPunCallbacks, IDamageMonster, I
                 Move();
                 break;
             case MonsterBehaviorState.CastSkill:
-                CastSkill();
+                ChooseSkill();
                 break;
             default:
                 break;
@@ -106,7 +136,7 @@ public class DragonControllerTest : MonoBehaviourPunCallbacks, IDamageMonster, I
         headX += Time.deltaTime * dirHead * headSpeed;
         if (headX > limitHeadX || headX < -limitHeadX) dirHead = -dirHead;
         headX = Mathf.Clamp(headX, -limitHeadX, limitHeadX);
-        listBodyParts[0].localPosition = headX * Vector3.right;
+        bossHead.localPosition = headX * Vector3.right;
     }
     public void FindTarget()
     {
@@ -142,8 +172,19 @@ public class DragonControllerTest : MonoBehaviourPunCallbacks, IDamageMonster, I
     {
         if (targetPlayer == null) return;
 
-        transform.LookAt(targetPlayer);
-        transform.eulerAngles = new Vector3(0, transform.eulerAngles.y, 0);
+        lookRotation = Quaternion.LookRotation(targetPlayer.position - transform.position);
+        lookRotation.eulerAngles = new Vector3(0f, lookRotation.eulerAngles.y, 0f);
+        //transform.LookAt(targetPlayer);
+        //transform.eulerAngles = new Vector3(0, transform.eulerAngles.y, 0);
+        transform.rotation = Quaternion.Slerp(transform.rotation, lookRotation, Time.deltaTime * 5f);
+
+        if(monsForm == Form.Second)
+        {
+            foreach(var part in listBodyParts)
+            {
+                part.LookAt(targetPlayer.position);
+            }
+        }
     }
     public void Idle()
     {
@@ -153,29 +194,61 @@ public class DragonControllerTest : MonoBehaviourPunCallbacks, IDamageMonster, I
     {
         
     }
-    public void CastSkill()
+    public void ChangeForm()
+    {
+        if(monsForm == Form.First)
+        {
+            if(health < 5000f)
+            {
+                monsForm = Form.Second;
+                monsLiveState = MonsterLiveState.Transform;
+                form1.weight = 0f;
+                form2.weight = 1f;
+                for(int i = 0; i < listBodyParts.Count; i++)
+                {
+                    listBodyParts[i].active = true;
+                }
+                targetPlayer = null;
+                monsLiveState = MonsterLiveState.Live;
+            }
+        }
+    }
+    public void ChooseSkill()
+    {
+        Skill_FireBall();
+    }
+    public void Skill_FireBall()
     {
         PV.RPC(nameof(RPC_FireBall), RpcTarget.All);
     }
-
-    public void TakeDamage()
+    public void TakeDamage(float damage)
     {
-        if(monsLiveState == MonsterLiveState.Live && monsBehaviorState == MonsterBehaviorState.Idle)
-            PV.RPC(nameof(RPC_TakeDamage), RpcTarget.All);
+        if(monsLiveState == MonsterLiveState.Live)
+            PV.RPC(nameof(RPC_TakeDamage), RpcTarget.All, damage);
     }
-
     [PunRPC]
-    void RPC_TakeDamage()
+    void RPC_TakeDamage(float damage)
     {
-        Debug.Log("Took Damage");
-        health -= 500f;
+        health -= damage;
         health = Mathf.Clamp(health, 0f, 10000f);
         healthBar.fillAmount = health / 10000f;
 
-        if(health == 0f)
+        ChangeForm();
+
+        if (health == 0f)
         {
             monsLiveState = MonsterLiveState.Dead;
+            for (int i = 0; i < listBodyParts.Count; i++)
+            {
+                listBodyParts[i].active = false;
+            }
+            for(int i = 0; i < explores.Count; i++)
+            {
+                explores[i].transform.SetParent(null);
+                explores[i].Play(true);
+            }
             MapManager.instance.EndGameWin();
+            gameObject.SetActive(false);
         }
     }
 
@@ -210,5 +283,12 @@ public enum MonsterLiveState
 {
     Sleep,
     Live,
+    Transform,
     Dead
+}
+
+public enum Form
+{
+    First,
+    Second
 }

@@ -10,10 +10,11 @@ public class Weapon : MonoBehaviour
     public Vector3 weaponOffset;
     public bool isFiring;
     public bool isBulletOut;
+    public int bulletAmount;
+    public float damage;
 
     [Header("Weapon Effect")]
-    [SerializeField] protected Muzzle muzzle;
-    [SerializeField] protected HitEffect hitEffect;
+    [SerializeField] protected Muzzle muzzle;    
 
     [Header("Weapon Properties")]
     [SerializeField] protected float baseShotDuration;
@@ -23,17 +24,10 @@ public class Weapon : MonoBehaviour
     public Transform raycastOrigin;
     [HideInInspector]
     public Transform raycastDestination;
-    Ray ray;
-    RaycastHit hitInfo;
-
-    private void Update()
-    {
-        
-    }
-    private void LateUpdate()
-    {
-        
-    }
+    [HideInInspector]
+    public Ray ray;
+    [HideInInspector]
+    public RaycastHit hitInfo;
 
     public virtual void StartFire()
     {
@@ -45,18 +39,9 @@ public class Weapon : MonoBehaviour
     {
         isFiring = false;
         isBulletOut = false;
-        shotDuration = 0f;
     }
     public virtual void UpdateFire()
     {
-        if (Physics.Raycast(ray, out hitInfo))
-        {
-            hitEffect.SetupHit(hitInfo.point, hitInfo.normal);
-            if (isBulletOut)
-            {
-                hitInfo.collider.GetComponentInParent<IDamageMonster>()?.TakeDamage();
-                isBulletOut = false;
-            }
-        }
+        
     }    
 }

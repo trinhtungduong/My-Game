@@ -78,7 +78,8 @@ public class PlayerController : MonoBehaviourPunCallbacks, IPunInstantiateMagicC
     public bool damaging;
     private void Awake()
     {
-        playerManager = PhotonView.Find((int)PV.InstantiationData[0]).GetComponent<PlayerManager>();
+        if(!PhotonNetwork.OfflineMode)
+            playerManager = PhotonView.Find((int)PV.InstantiationData[0]).GetComponent<PlayerManager>();
     }
     private void Start()
     {
@@ -273,6 +274,7 @@ public class PlayerController : MonoBehaviourPunCallbacks, IPunInstantiateMagicC
         for(int i = 0; i < weaponEquipData.listWeapons.Count; i++)
         {
             var newWeapon = Instantiate(weaponEquipData.listWeapons[i], weaponPivot);
+            newWeapon.gameObject.SetActive(false);
             listWeapons.Add(newWeapon);
         }
         isInitWeapon = true;

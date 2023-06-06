@@ -19,6 +19,9 @@ public class PlayerListItem : MonoBehaviourPunCallbacks
     {
         if(player == otherPlayer)
         {
+            Launcher.Instance.numberOfPlayerInRoom.text = "Players: " + 
+                                                           PhotonNetwork.CurrentRoom.PlayerCount.ToString() + 
+                                                           "/" + PhotonNetwork.CurrentRoom.MaxPlayers.ToString();
             Destroy(gameObject);
         }
     }

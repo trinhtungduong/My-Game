@@ -14,4 +14,4 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   listWeapons:
   - {fileID: 48885643787980056, guid: 8d26eb4208ba5644993031d453e6a33b, type: 3}
-  - {fileID: 4645519518574967325, guid: 02540723728598347a3a35fc4dc13732, type: 3}
+  - {fileID: 8925918051095074902, guid: fd32fef987c0e9c44a30ebcec5274342, type: 3}

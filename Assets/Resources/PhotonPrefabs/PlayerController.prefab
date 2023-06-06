@@ -2450,7 +2450,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   characterController: {fileID: 6328971972170145176}
-  moveSpeed: 3
+  moveSpeed: 8
   jumpHeight: 3
   dir: {x: 0, y: 0, z: 0}
   groundYOffset: -0.25
@@ -2484,6 +2484,7 @@ MonoBehaviour:
   PV: {fileID: 6328971972170145190}
   health: 1000
   isAlive: 0
+  damaging: 0
 --- !u!1 &6328971972176478587
 GameObject:
   m_ObjectHideFlags: 0
